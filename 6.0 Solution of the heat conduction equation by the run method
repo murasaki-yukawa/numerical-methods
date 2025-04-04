@@ -1,0 +1,81 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+h = 0.01
+x_n = np.arange(0, 1, h)
+
+N = len(x_n)
+print(f'N = {N}')
+
+def P(x):  return 100 * np.exp(-((x - 0.5) / 0.1) ** 8)
+def Y(x):  return 200 * np.exp(-((x - 0.2) / 0.1) ** 8) + 300 * np.exp(- ((x - 0.8) / 0.1) ** 8)
+
+
+Px = P(x_n)
+Yx = Y(x_n)
+
+
+A = np.array([])
+B = np.array([])
+
+A_i = 1
+B_i = 0
+
+for x in x_n:
+    A = np.append(A, A_i)
+    B = np.append(B, B_i)
+
+    A_i = 1 / (2 + Y(x) * h ** 2 - A_i)
+    B_i = (B_i + h ** 2 * P(x)) / (2 + Y(x) * h ** 2 - A_i)
+
+
+A = np.append(A, A_i)
+B = np.append(B, B_i)
+
+print(f'A={A}, B={B}')
+
+T = np.array([])
+T_i = B[N-2] / (A[N-2]-1)
+
+
+for i in range(N-2, -1, -1):
+    T = np.append(T, T_i)
+    T_i = A[i-1] * T_i + B[i-1]
+
+T = np.append(T, T_i)
+print(f'T={T}')
+
+
+
+dT_r = (T[N-1] - T[N-2])
+dT_l = (T[1] - T[0]) / h
+print(dT_r)
+print(dT_l)
+
+# Аналитика
+
+
+plt.figure(figsize=(8, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(x_n, Px, label='P(x)')
+plt.plot(x_n, Yx, label='Y(x)')
+plt.grid(which='both', axis='both')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.legend()
+plt.grid(False)
+plt.title('Функции')
+
+
+plt.subplot(2, 1, 2)
+plt.plot(x_n, T, label='T(x)')
+plt.grid(which='both', axis='both')
+plt.xlabel('x')
+plt.ylabel('T')
+plt.legend()
+plt.grid(False)
+plt.title('Распределение температуры')
+
+plt.tight_layout()
+plt.show()
