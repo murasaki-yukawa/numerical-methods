@@ -1,0 +1,176 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+focus = 0.5  # [0.2; 0.5]
+
+Nz = 50
+Nr = 1000
+
+Z = 1
+R = 5
+
+hz = Z / Nz
+hr = R / Nr
+
+r = np.arange(0, R, hr).round(3)
+z = np.arange(0, Z, hz).round(3)
+
+E = np.zeros((Nz, Nr), dtype=complex)
+E1 = np.zeros((Nz, Nr), dtype=complex)
+E_inf = np.zeros((Nz, Nr), dtype=complex)
+
+
+def E_analitical(ri, zi, fi):    return 1 / (1 - (zi / fi) - (1j * zi)) * np.exp(-((ri ** 2) / 2) * (1 + 1j * (zi - (1 / fi) * (1 - (zi / fi)))) / ((1 - zi / fi) ** 2 + (zi ** 2)))
+
+def E_analitical_inf(ri, zi):    return 1 / (1 - 1j * zi) * np.exp(-((ri ** 2) / 2) * (1 + 1j * zi) / (1 + zi ** 2))
+
+
+def E0(ri, fi): return np.exp(-(ri ** 2) / 2 * (1 - 1j / fi))
+
+def E0_inf(ri): return np.exp(-(ri ** 2) / 2)
+
+# ------------------------------------ Аналитика ------------------------------------
+
+nu = 2
+
+# Гауссова фокусировка
+if nu == 1:
+    f = focus
+    E[0, :] = E0(r, f)
+
+    for m in range(Nz):
+        for k in range(Nr):
+            E1[m, k] = E_analitical(r[k], z[m], focus)
+
+
+# Коллимированный пучок
+if nu == 2:
+    f = "inf"
+    E[0, :] = E0_inf(r)
+
+    for m in range(Nz):
+        for k in range(Nr):
+            E1[m, k] = E_analitical_inf(r[k], z[m])
+
+
+# ------------------------------------ Численное ------------------------------------
+
+Ak = np.array([- 1 / (hr ** 2) - 1 / (2 * ri * hr) for ri in r], dtype=complex)
+Bk = 2 * 1j / hz + 2 / (hr ** 2)
+Ck = np.array([- 1 / (hr ** 2) + 1 / (2 * ri * hr) for ri in r], dtype=complex)
+Fk = - 2 * 1j / hz
+# Вылазиющие ошибки деления на ноль - нормально. Значения сразу перезаписываются
+
+Ak[0] = - 4 / (hr ** 2)
+Ak[0] = 0
+
+alpha = np.zeros(Nr, dtype=complex)
+gamma = np.zeros(Nr, dtype=complex)
+
+
+
+for m in range(1, Nz):
+    alpha[0] = 1
+    gamma[0] = 0
+
+    for k in range(1, Nr):
+        alpha[k] = - Ak[k] / (Bk + Ck[k] * alpha[k-1])
+        gamma[k] = - (Fk * E[m-1, k] + Ck[k] * gamma[k-1]) / (Bk + Ck[k] * alpha[k-1])
+
+
+    E[m, Nr-1] = gamma[Nr-1] / (1 - alpha[Nr-1])
+
+    for k in range(Nr-2, -1, -1):
+        E[m, k] = alpha[k-1] * E[m, k+1] + gamma[k-1]
+
+
+diff_E = abs(E - E1)     # разница между аналитикой и численным
+
+E_num = np.abs(E) ** 2
+E_an = np.abs(E1) ** 2
+
+
+# ------------------------------------ Графика ------------------------------------
+
+
+g1 = 0
+if g1 == 1:
+
+    m1 = 0
+
+    plt.figure(figsize=(8, 8))
+
+    # plt.plot(r, np.abs(E[0, :] ** 2), label='Z=0')
+
+    # for m in range(Nz):
+    #     plt.plot(r, np.abs(E1[m, :] ** 2), label=f'Z={z[m]}')
+
+    for m in range(Nz):
+        plt.plot(r, np.abs(E[m, :] ** 2), label=f'Z={z[m]}')
+
+
+    # plt.plot(r, np.abs(E1[m1, :] ** 2), label=f'Аналитика')
+    # plt.plot(r, np.abs(E[m1, :] ** 2), label=f'Численное')
+
+    plt.xlabel('r')
+    plt.ylabel('|E^2|')
+    # plt.title(f'Z={z[m1]}')
+    # plt.ylim(0, 100)
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
+
+g2 = 1
+if g2 == 1:
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    R, Z = np.meshgrid(r, z)
+    ax.plot_surface(R, Z, E_an, cmap='viridis')     # ----- аналитика
+
+
+    ax.set_xlabel('r')
+    ax.set_ylabel('z')
+    ax.set_zlabel('|E|^2')
+    ax.set_title(f'Аналитика. f={f}')
+    plt.gca().set_ylim(ax.get_ylim()[::-1])
+
+    plt.show()
+
+g3 = 1
+if g3 == 1:
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    R, Z = np.meshgrid(r, z)
+    ax.plot_surface(R, Z, E_num, cmap='viridis')    # ----- численное
+
+    ax.set_xlabel('r')
+    ax.set_ylabel('z')
+    ax.set_zlabel('|E|^2')
+    ax.set_title(f'Численное. f={f}')
+    plt.gca().set_ylim(ax.get_ylim()[::-1])
+
+    plt.show()
+
+g4 = 0
+if g4 == 1:
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    R, Z = np.meshgrid(r, z)
+    ax.plot_surface(R, Z, diff_E, cmap='viridis')    # ----- численное
+
+    ax.set_xlabel('r')
+    ax.set_ylabel('z')
+    ax.set_zlabel('|E|^2')
+    ax.set_title(f'Ошибка. f={f}')
+    plt.gca().set_ylim(ax.get_ylim()[::-1])
+
+    plt.show()
+
+
+
