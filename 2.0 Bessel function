@@ -1,0 +1,91 @@
+import numpy as np
+from scipy.special import jv
+from findiff import FinDiff
+import matplotlib.pyplot as plt
+
+h_val = np.arange(0.01, 5, 0.01).round(3)
+
+max_err = []
+dJv = []
+
+
+for h in h_val:
+
+    x0 = 5
+    x1 = 30 + h
+    x_val = np.arange(x0, x1, h)
+
+    v = 10
+    Jv = np.array([jv(v, x) for x in x_val])
+
+    z = 10
+    J1 = Jv
+
+    while v > 0:
+        d = FinDiff(0, h)
+        dJv_dx = d(Jv)
+
+        Jv_num = np.array([v / x * Jv + dJv_dx for x, Jv, dJv_dx in zip(x_val, Jv, dJv_dx)])
+
+        v -= 1
+        Jv = Jv_num
+
+
+    J0 = np.array([jv(0, x) for x in x_val])
+
+    J0_dev = np.array([J0_val - J0_num_val for J0_val, J0_num_val in zip(J0, Jv)])
+    max_Jv_err = np.max(np.abs(J0_dev))
+    max_err.append(max_Jv_err)
+    # Максимальная ошибка. Или надо среднюю?
+
+    # ----------------------------------------------------------------
+    # plt.figure(figsize=(12, 12))
+    # plt.plot(x_val, Jv, label=f'J0_num(x), h={h}')
+    # plt.plot(x_val, J0, label='J0(x)')
+    # plt.xlabel('x')
+    # plt.ylim(-1, 1)
+    # plt.ylabel('Jv')
+    # plt.legend()
+    # plt.grid(True)
+    # plt.title('Функция Бесселя нулевого порядка. FinDiff')
+    # ----------------------------------------------------------------
+
+    if h == 0.7:
+        plt.figure(figsize=(12, 12))
+        plt.rc('font', size=16)
+        plt.subplot(3, 1, 1)
+        # plt.plot(x_val, J1, label=f'Исходная J{z}(x)', linestyle='dashed')
+        plt.plot(x_val, Jv, label=f'Численно расчитанная функция, h={h}')
+        plt.plot(x_val, J0, label='Встроенная функция')
+        plt.xlabel('x')
+        plt.ylim(-1, 1)
+        plt.ylabel('J0')
+        plt.legend()
+        plt.grid(True)
+        # plt.title('Функция Бесселя нулевого порядка. FinDiff')
+
+        plt.subplot(3, 1, 2)
+        plt.plot(x_val, J0_dev)
+        plt.xlabel('x')
+        plt.ylabel('Ошибка')
+        plt.legend()
+        plt.grid(True)
+        plt.title('Зависимость ошибки от координаты')
+
+opt_h = np.argmin(max_err)
+print(f'optim h = {opt_h}')
+
+plt.subplot(3, 1, 3)
+plt.plot(h_val, max_err)
+# plt.yscale('log')
+plt.grid(which='both', axis='both')
+plt.xlabel('h')
+plt.xlim(0, 5)
+plt.ylabel('Ошибка')
+plt.ylim(0, 1)
+plt.legend()
+plt.grid(True)
+plt.title('Зависимость ошибки от шага')
+
+plt.tight_layout()
+plt.show()
