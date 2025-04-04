@@ -1,0 +1,305 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import time
+
+# start_time = time.time()
+
+
+# Вариант № 10
+
+h = 0.01
+E = -8
+
+# E = -6.63854      # - 1
+# E = -4.17969      # - 2
+# E = -2.17969      # - 3
+# E = -0.793635     # - 4
+
+x0 = 5 * h
+x1 = 4
+x_n = np.arange(h, x1, h)  # Потенциал
+nx = len(x_n)
+# print(nx)
+
+A = 0.1       # для интегралов
+# A = 1e-20   #нормировка      En= [-6.53333333 -4.18333333 -2.22962963 -0.49814815]
+# A = 1e-15
+# A = 1e-10
+# A = 1e-5
+# A = 1e-2
+# A = 1e-1
+# A = 1
+# A = 10
+# A = 10 ** 2
+# A = 10 ** 5
+# A = 10 ** 10
+# A = 10 ** 15
+# A = 10 ** 20
+
+Ai = np.array([1e-20, 1e-15, 1e-10, 1e-5, 1e-2, 1e-1, 1, 10, 10 ** 2, 10 ** 5, 10 ** 10, 10 ** 15, 10 ** 20])
+
+# A_ = 1.25 * 10 ** 19
+A_ = 1
+
+def U(x):   return -10 * np.exp(-(x / 3) ** 2) + 1 / (x ** 2 + 10e-6)
+
+def k(x, E):   return 2 * (U(x) - E)
+
+
+Ux = U(x_n)
+U_min = np.min(Ux)    # U_min = -7.9483941681426975
+U_min_x = np.argmin(Ux)
+x_min = h * U_min_x
+
+
+def RK_ksi(x, E, psi_x):
+    k_1 = h * k(x, E) * psi_x
+    # print(f'k_1 {x} = {k_1}')
+    k_2 = h * (k(x + h / 2, E) * psi_x + k_1 / 2)
+    # print(f'k_2 {x} = {k_2}')
+    k_3 = h * (k(x + h / 2, E) * psi_x + k_2 / 2)
+    # print(f'k_3 {x} = {k_3}')
+    k_4 = h * (k(x + h / 2, E) * psi_x + k_3)
+    # print(f'k_4 {x} = {k_4}')
+    RK = (k_1 + 2 * (k_2 + k_3) + k_4) / 6
+    return RK
+
+
+def RK_psi(x, ksi_x):
+    k_1 = h * ksi_x
+    # print(f'k_1 {x} = {k_1}')
+    k_2 = h * (ksi_x + k_1 / 2)
+    # print(f'k_2 {x} = {k_2}')
+    k_3 = h * (ksi_x + k_2 / 2)
+    # print(f'k_3 {x} = {k_3}')
+    k_4 = h * (ksi_x + k_3)
+    # print(f'k_4 {x} = {k_4}')
+    RK = (k_1 + 2 * (k_2 + k_3) + k_4) / 6
+    return RK
+
+def Fn1(E):
+    ksi_x = A
+    psi_x = 0
+    for x in x_n:
+        ksi_x += RK_ksi(x, E, psi_x)
+        psi_x += RK_psi(x, ksi_x)
+    f = ksi_x + np.sqrt(2 * abs(E)) * psi_x
+    # print(f'Fn1_E = {E}')
+    return f
+
+def Fn(E_min, E_max, dE):
+    E_n0 = np.arange(E_min, E_max, dE)
+    F0 = np.array([])
+
+    for E in E_n0:
+        f = Fn1(E)
+        F0 = np.append(F0, f)
+        # print(f'E = {E}')
+    return F0
+
+
+# -----------------------------------------------------
+#   Поиск с.з. En
+
+he = 0.05
+E_n = np.arange(-8, 0, he)  # Для графика
+
+F = Fn(-8, 0, he)
+
+
+I = np.array([])
+for i in range(len(F)-1):
+    if (F[i] * F[i+1]) < 0:
+        I = np.append(I, int(i))
+print(I)    #[ 2.  7. 11. 14.]
+
+# -----------------------------------------------------
+# Точные с.з.
+
+h0 = he
+En = np.array([])
+for i in I:
+    h = h0 / 3  #-----------------------
+    i = int(i)
+
+    V = E_n[i]
+    W = E_n[i+1]
+    # print(f' V = {V}; W = {W}')
+    # print(f' F[i] = {F[i]}; F[i+1] = {F[i+1]}')
+
+    while h >= 1e-10:
+        B = Fn1(V + h)
+        # print(f'h= {h}')
+        # print(f'B {i} = {B}')
+
+        if B * F[i] < 0:
+            W = V + h
+
+        elif B * F[i+1] < 0:
+            V = V + h
+
+        # print(f' V = {V}; W = {W}')
+
+        h = (W - V) / 3     #-----------------------
+
+        # print(f'dE {i} = {dE}')
+        # print('')
+
+    Ei = (V + W) / 2
+    print(f'Ei {i} = {Ei}')
+
+    En = np.append(En, Ei)
+
+print(f'En= {En}')
+print('')
+
+# --------------------------------------------------------------------
+#   Волновые Функции
+
+plt.figure(figsize=(8, 6))
+# plt.subplot(2, 1, 2)----
+plt.plot(x_n, Ux, label='U(x)', color='k')
+
+h = 1e-2
+x_n = np.arange(h, x1, h)
+wave_func = np.zeros((len(En), len(x_n)))
+
+for i, Eni in enumerate(En):
+
+    # print(f'Eni={Eni}')
+    xi = np.array([])
+    psi = np.array([])
+    ksi = np.array([])
+    ksi_x = A
+    psi_x = 0
+    x = h
+
+    for x in x_n:
+        xi = np.append(xi, x)
+
+        ksi_x += RK_ksi(x, Eni, psi_x)
+        psi_x += RK_psi(x, ksi_x)
+        x += h
+
+        psi = np.append(psi, psi_x)
+        ksi = np.append(ksi, ksi_x)
+
+    # plt.subplot(2, 1, 2)
+    # plt.scatter(xi, ksi + Eni, label='ksi(x)', c='r', s=1)----
+    # plt.scatter(xi, A_ * psi + Eni, label=f'E= {Eni}', s=1)----
+
+    plt.scatter(xi, A_ * psi + Eni, label=f'E= {Eni}', s=1)
+
+    wave_func[i, :] = psi
+    # print(f'psi {i} = {psi}')
+
+print('')
+
+
+# --------------------------------------------------------------------
+#   Ортогонональность в.ф.
+
+ort00 = np.sum(wave_func[0] * wave_func[0] * h)
+ort11 = np.sum(wave_func[1] * wave_func[1] * h)
+ort22 = np.sum(wave_func[2] * wave_func[2] * h)
+ort33 = np.sum(wave_func[3] * wave_func[3] * h)
+
+norm_wave_func = np.copy(wave_func)
+norm_wave_func[0] /= np.sqrt(ort00)
+norm_wave_func[1] /= np.sqrt(ort11)
+norm_wave_func[2] /= np.sqrt(ort22)
+norm_wave_func[3] /= np.sqrt(ort33)
+
+for i in range(4):
+    norm = np.sum(norm_wave_func[i] * norm_wave_func[i] * h)
+    print(f'{i}_{i} = {norm}')
+
+ort00 = np.sum(norm_wave_func[0] * norm_wave_func[0] * h)
+ort11 = np.sum(norm_wave_func[1] * norm_wave_func[1] * h)
+ort22 = np.sum(norm_wave_func[2] * norm_wave_func[2] * h)
+ort33 = np.sum(norm_wave_func[3] * norm_wave_func[3] * h)
+
+ort01 = np.sum(norm_wave_func[0] * norm_wave_func[1] * h)
+ort02 = np.sum(norm_wave_func[0] * norm_wave_func[2] * h)
+ort03 = np.sum(norm_wave_func[0] * norm_wave_func[3] * h)
+ort12 = np.sum(norm_wave_func[1] * norm_wave_func[2] * h)
+ort13 = np.sum(norm_wave_func[1] * norm_wave_func[3] * h)
+ort23 = np.sum(norm_wave_func[2] * norm_wave_func[3] * h)
+
+
+print(f'0_0 = {ort00}')
+print(f'0_1 = {ort01}')
+print(f'0_2 = {ort02}')
+print(f'0_3 = {ort03}')
+print(f'1_1 = {ort11}')
+print(f'1_2 = {ort12}')
+print(f'1_3 = {ort13}')
+print(f'2_2 = {ort22}')
+print(f'2_3 = {ort23}')
+print(f'3_3 = {ort33}')
+
+
+
+
+# plt.subplot(2, 1, 1)
+# plt.plot(E_n, F, label='F(E)')
+# plt.xlabel('E')
+# plt.ylabel('F(E)')
+# plt.xlim(-7, 0)
+# plt.ylim(-1*1e-18, 1.5e-18)
+# plt.legend()
+# plt.grid(True)
+# plt.title('Поиск энергий')
+
+# plt.subplot(2, 1, 2)
+# plt.scatter(xi, ksi+Ei, label='ksi(x)', c='r', s=1)
+# plt.scatter(xi, psi+Ei, label='psi(x)', c='k', s=1)
+plt.xlabel('x')
+plt.ylabel('U')
+# plt.xlim(0.5, 1.5)
+plt.ylim(-10, 2)
+plt.legend()
+plt.grid(True)
+# plt.title(f'График, he = {he}')
+
+plt.tight_layout()
+plt.show()
+
+
+
+
+
+# --------------------------------------------
+# независимость с.з. от свободного параметра
+
+
+# values = [-6.533333333482207, -4.183333333204288, -2.2796296297413017, -0.4981481480191161]
+#
+# for i, value in enumerate(values):
+#     result = np.full_like(Ai, value)  # Создаем массив с постоянным значением
+#     plt.scatter(Ai, result, label=f'E {i} = {value}')
+#
+# # Настройка графика
+# plt.xscale('log')
+# plt.xlabel('Значения свободного параметра')
+# plt.ylabel('Собственные значения')
+#
+# plt.legend()
+# plt.grid(True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+# end_time = time.time()
+# execution_time = end_time - start_time
+# print('')
+# print(f"Время выполнения кода: {execution_time} секунд")
