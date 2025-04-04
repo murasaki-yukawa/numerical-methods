@@ -1,0 +1,165 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+
+# Чтение файла
+desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+file_path = os.path.join(desktop_path, 'sig03.dat')
+
+x = []      # координата
+s_x = []    # сигнал * аппаратная + шум
+h_x = []    # аппаратная
+
+with open(file_path, 'r') as file:
+    for line in file:
+        if line.strip():
+            parts = line.split()
+            if len(parts) == 3:
+                xi, si, hi = map(float, parts)
+                x.append(xi)
+                s_x.append(si)
+                h_x.append(hi)
+
+x = np.array(x)
+s_x = np.array(s_x)
+h_x = np.array(h_x)
+# -----------------------------------------------------------------------
+
+# N = len(x)
+N = 8192
+# print(N)
+# h = (np.max(x) - np.min(x)) / N
+h = 0.003905773193359375
+# print(h)
+
+
+s_w0 = np.fft.fft(s_x, n=N)
+w = np.fft.fftfreq(N, h)
+
+h_w = np.fft.fft(h_x, n=N)
+
+
+# ------------------------------ Частотная фильтрация --------------------
+
+def Fil(x):
+    v = np.exp(-x ** 10 / (0.2 ** 10))
+    return v
+
+FF = np.array([Fil(w_n) for w_n in w]) #* np.max(abs(s_w0) ** 2)
+
+
+s_w = s_w0 * FF   # применение фильтра
+s_x0 = np.fft.ifft(s_w, n=N)
+
+
+f_w = s_w / h_w
+f_x = np.fft.ifft(f_w, n=N)
+f_x = np.roll(f_x, N//2)    #центрирование
+
+
+
+# ------------------------------ Производная --------------------------
+df_w = 2 * np.pi * 1j * w * f_w
+df_x = np.fft.ifft(df_w, n=N)
+df_x = np.roll(df_x, N//2)    #центрирование
+
+
+# ------------------------------ Графика ------------------------------
+plt.figure(figsize=(16, 9))
+plt.rc('font', size=20)
+
+plt.subplot(4, 2, 1)
+plt.rc('font', size=16)
+plt.plot(x, s_x, label='s(x)')
+plt.plot(x, np.real(s_x0), color='r', label='s(x) + фильтр')
+plt.plot(x, np.real(f_x / h), color='k', label='f(x)')
+# plt.plot(x, np.real(s_x0), label='s(x)')
+plt.grid(which='both', axis='both')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.legend()
+plt.grid(False)
+plt.title('Сигнал')
+
+
+plt.subplot(4, 2, 2)
+plt.plot(x, h_x, label='h(x)')
+plt.grid(which='both', axis='both')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.grid(False)
+plt.title('Аппарартная функция')
+
+
+plt.subplot(4, 2, 3)
+plt.plot(w, np.abs(s_w0) ** 2, label='s(w)')
+# plt.plot(w, FF, label='фильтр')
+plt.plot(w, np.abs(s_w) ** 2, color='r', label='s(w)+фильтр')
+plt.grid(which='both', axis='both')
+plt.xlabel('Частота')
+plt.ylabel('|s(w)|^2, log')
+plt.yscale('log')
+# plt.xlim(-1, 1) #---------------------
+plt.ylim(1e-3, 1e8)
+plt.legend()
+plt.grid(False)
+plt.title('Спектр сигнала')
+
+
+plt.subplot(4, 2, 4)
+plt.plot(w, h * np.abs(h_w) ** 2, label='h(w)')
+plt.grid(which='both', axis='both')
+plt.xlabel('Частота')
+plt.ylabel('|h(w)|^2')
+# plt.yscale('log')
+# plt.xlim(-1, 1) #---------------------
+plt.grid(False)
+plt.title('Спектр аппаратной функции')
+
+
+plt.subplot(4, 2, 5)
+plt.plot(w, h * np.abs(f_w) ** 2, label='f(w)')
+plt.grid(which='both', axis='both')
+plt.xlabel('Частота')
+plt.ylabel('|f(w)|^2')
+plt.yscale('log')
+# plt.xlim(-1, 1) #---------------------
+# plt.ylim(0, 200)
+plt.grid(False)
+plt.title('Спектр востановленного сигнала')
+
+
+plt.subplot(4, 2, 6)
+plt.plot(x, np.real(f_x / h), label='f(x)')
+plt.grid(which='both', axis='both')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.grid(False)
+plt.title('Востановленный сигнал')
+
+
+plt.subplot(4, 2, 7)
+plt.plot(w, np.abs(df_w) ** 2, label='df(w)')
+plt.grid(which='both', axis='both')
+plt.xlabel('Частота')
+plt.ylabel('|df(w)|^2')
+plt.yscale('log')
+# plt.xlim(-1, 1) #---------------------
+plt.grid(False)
+plt.title('Спектр производной')
+
+
+plt.subplot(4, 2, 8)
+plt.plot(x, np.real(df_x / h), label='df(x)')
+plt.plot(x, np.real(f_x / h), label='f(x)')
+plt.grid(which='both', axis='both')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.legend()
+plt.grid(False)
+plt.title('Производная')
+
+
+
+plt.tight_layout()
+plt.show()
