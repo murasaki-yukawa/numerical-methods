@@ -1,0 +1,103 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Вариант № 7
+
+D = 20e-6   # Ширина
+d = 2e-6    # Период решётки
+n = D / d
+L1 = 0.5e-6  # Длина волны
+L2 = 1 * L1 / n + L1  # Длина волны
+L = (L2 + L1) / 2
+
+N = 2048
+
+b = 1     # Растояние до экрана
+M = 40000
+v = 5
+
+h = 2 * v * D / N
+xn = np.linspace(-v * D, v * D, N, endpoint=False)  # Диф решётка
+xi = np.linspace(-M * D, M * D, N, endpoint=False)  # Дифракция
+
+
+k1 = 2 * np.pi / L1
+kx1 = k1 * xi / b
+
+k2 = 2 * np.pi / L2
+kx2 = k1 * xi / b
+
+# Нормировка
+A1 = (1j + 1) / (np.sqrt(2 * L1 * b)) * np.exp(1j * k1 * b)
+A2 = (1j + 1) / (np.sqrt(2 * L2 * b)) * np.exp(1j * k2 * b)
+
+
+# Дифракционая решётка
+def E0(x):
+    if abs(x) <= D/2:
+        E0 = 1 / 2 - (1 / 2) * np.cos(2 * np.pi * x / d)
+    elif abs(x) > D/2:
+        E0 = 0
+    return E0
+
+E = np.array([E0(x) for x in xn])
+
+
+
+# ДФП
+def Fki(kx):
+    Fk_i = np.sum(E * np.exp(- 1j * kx * xn)) * h
+    return Fk_i
+
+Fk1 = np.array([abs(A1 * Fki(k_i)) ** 2 for k_i in kx1])
+Fk2 = np.array([abs(A2 * Fki(k_i)) ** 2 for k_i in kx2])
+
+
+# БПФ
+FF1 = abs(A1 * np.fft.fft(E,  n=N, norm=None) * h) ** 2
+freq1 = np.fft.fftfreq(N, h) / k1 * 2 * np.pi
+
+FF2 = abs(A2 * np.fft.fft(E,  n=N, norm=None) * h) ** 2
+freq2 = np.fft.fftfreq(N, h) / k2 * 2 * np.pi
+
+
+
+plt.figure(figsize=(10, 6))
+
+plt.subplot(3, 1, 1)
+plt.plot(xn, E, color='k')
+plt.grid(which='both', axis='both')
+plt.xlabel('x')
+plt.ylabel('E0(x)')
+plt.ylim(-0.1, 1.2)
+plt.grid(False)
+plt.title('Дифракционная решётка')
+
+plt.subplot(3, 1, 2)
+plt.plot(kx1/k1, Fk1, color='b', label=f'L1 = {L1}')
+plt.plot(kx2/k2, Fk2, color='r', label=f'L2 = {L2}')
+plt.grid(which='both', axis='both')
+plt.xlabel('kx/k')
+plt.ylabel('E0(Kx)')
+plt.xlim(-0.8, 0.8)
+plt.legend()
+plt.grid(False)
+plt.title('Дифракционная картина, медленное ФП')
+
+
+plt.subplot(3, 1, 3)
+plt.plot(freq1, FF1, color='b', label=f'L1 = {L1}')
+plt.plot(freq2, FF2, color='r', label=f'L2 = {L2}')
+plt.grid(which='both', axis='both')
+plt.xlabel('kx/k')
+plt.xlim(-0.8, 0.8)
+plt.legend()
+plt.ylabel('E0(Kx)')
+plt.grid(False)
+plt.title('Дифракционная картина, быстрое ФП')
+
+
+plt.tight_layout()
+plt.show()
+
+
