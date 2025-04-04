@@ -1,0 +1,163 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+
+v = 1.0
+L = 20.0
+T = 10.0
+Nx = 200
+Nt = 100
+hx = L / Nx
+ht = T / Nt
+a = v * ht / hx
+
+print(f'hx = {hx}')
+print(f'ht = {ht}')
+print(f'a = {a}')
+
+x = np.arange(0, L, hx)
+t = np.arange(0, T, ht)
+y = np.zeros((Nt, Nx))
+
+# print(len(x))
+# print(len(t))
+# print(len(y))
+
+
+y[0, :] = np.exp(-(x - 4) ** 2 / 2)
+
+
+# ЦЕНТРИРОВАНИЕ ПО ПРОСТРАНСТВУ
+
+# for n in range(Nt - 1):
+#     for i in range(1, Nx - 1):
+#         y[n + 1, i] = y[n, i] - a / 2 * (y[n, i + 1] - y[n, i - 1])
+
+
+
+# # ЛЕВАЯ ПРОИЗВОДНАЯ
+
+# for n in range(Nt - 1):
+#     for i in range(1, Nx - 1):
+#         y[n + 1, i] = y[n, i] - a * (y[n, i] - y[n, i - 1])
+
+
+
+# СХЕМА ЛАКСА
+
+for n in range(Nt - 1):
+    for i in range(1, Nx - 1):
+        y[n + 1, i] = 1 / 2 * (y[n, i + 1] + y[n, i - 1]) - a / 2 * (y[n, i + 1] - y[n, i - 1])
+
+
+
+
+# АНАЛИТИКА
+# for n in range(Nt - 1):
+#     for i in range(1, Nx - 1):
+#         y[n, i] = np.exp(-(x[i] - v * t[n] - 4) ** 2 / 2)
+
+
+# Вычисление и построение 3D графика спектра
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+spectra = []
+for n in range(Nt):
+    spectrum = np.fft.fft(y[n, :])
+    frequencies = np.fft.fftfreq(len(spectrum), d=hx)
+    spectra.append(np.abs(spectrum))
+
+
+y_min, y_max = -1, 1
+y_indices = np.where((frequencies >= y_min) & (frequencies <= y_max))[0]
+
+frequencies = frequencies[y_indices]
+spectra = np.array(spectra)[:, y_indices]
+
+max_spectra = np.max(spectra)
+
+
+F, T = np.meshgrid(frequencies, t)
+surf = ax.plot_surface(F, T, spectra, cmap='viridis')
+
+# ax.set_ylim(y_min, y_max)
+ax.set_zlim(0, max_spectra+1)
+
+ax.set_xlabel('Частота')
+ax.set_ylabel('Время')
+ax.set_zlabel('Амплитуда')
+ax.set_title('Эволюция спектра')
+
+
+plt.show()
+
+
+
+
+# 3D ГРАФИК
+
+# x = np.flip(x)
+# t = np.flip(t)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+X, T = np.meshgrid(x, t)
+# T, X = np.meshgrid(t, x)
+
+ax.plot_surface(X, T, y, cmap='viridis')
+# ax.plot_surface(T, X, y.T, cmap='viridis')
+ax.set_xlabel('x')
+ax.set_ylabel('t')
+ax.set_zlabel('y')
+# ax.set_title('Центрирование по пространству')
+# ax.set_title('Левая производная')
+ax.set_title('Схема Лакса')
+# ax.set_title('Аналитика')
+
+plt.show()
+
+
+
+# T, X = np.meshgrid(t, x)
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection='3d')
+# ax.plot_surface(T, X, y.T, cmap='viridis')
+# ax.set_xlabel('x')
+# ax.set_ylabel('t')
+# ax.set_zlabel('y')
+# ax.set_title('')
+# plt.show()
+
+
+# ГИФКА
+
+# y_0 = np.exp(-(x - 4) ** 2 / 2)
+# plt.plot(x, y_0, label='Initial Condition')
+# plt.xlabel('x')
+# plt.ylabel('y')
+# plt.legend()
+# plt.title('Initial Condition')
+# plt.show()
+#
+#
+# fig, ax = plt.subplots()
+# line, = ax.plot(x, y[0, :], label='t=0')
+# ax.set_xlabel('x')
+# ax.set_ylabel('y')
+# ax.legend()
+#
+# def update(frame):
+#     line.set_ydata(y[frame, :])
+#     ax.set_title(f'Time = {t[frame]:.2f}')
+#     return line,
+#
+# fps = 60
+# interval = 1000 / fps  # Интервал в миллисекундах между кадрами
+# ani = FuncAnimation(fig, update, frames=Nt, interval=interval)
+#
+# ani.save('animation.gif', writer='imagemagick', fps=fps)
+#
+# plt.show()
